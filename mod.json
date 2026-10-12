@@ -5,7 +5,7 @@
   },
   "id": "ollfx.autojump",
   "name": "AutoJump AI (Android)",
-  "version": "v0.3.1",
+  "version": "v0.3.2",
   "developer": "oll.fx",
   "description": "Experimental autoplay with elevated-platform trajectory takeoff, saved jump positions and hazard groups.",
   "settings": {
