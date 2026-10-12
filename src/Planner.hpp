@@ -6,6 +6,7 @@
 namespace autojump {
 struct Rect { float left=0,bottom=0,right=0,top=0; };
 struct Obstacle { Rect bounds; bool hazard=true; };
+struct PlannedJump { float takeoffX=0.f; float obstacleEnd=0.f; };
 struct Sense {
  float gap=10000.f,clusterEnd=0.f,dangerAbove=10000.f,dangerBelow=10000.f;
  bool obstacle=false,cluster=false;
@@ -74,6 +75,31 @@ public:
    }
   }
   return false;
+ }
+ // Static-level planning, calculated once from captured collision objects.
+ // The predicted cube arc is approximate; complex moving/trigger objects
+ // require live replanning.
+ std::vector<PlannedJump> planStaticRoute(float playerWidth=30.f) {
+  sort();
+  std::vector<PlannedJump> route;
+  for(std::size_t i=0;i<objects.size();++i) {
+   const auto& o=objects[i];
+   if(!o.hazard && (o.bounds.right-o.bounds.left>48.f ||
+                     o.bounds.top-o.bounds.bottom>48.f))continue;
+   if(!o.hazard)continue;
+   float start=o.bounds.left,end=o.bounds.right;
+   // Merge spike clusters, rather than generating one jump per spike.
+   while(i+1<objects.size()&&objects[i+1].hazard &&
+         objects[i+1].bounds.left<=end+36.f){
+    ++i;end=std::max(end,objects[i].bounds.right);
+   }
+   float width=end-start;
+   float launchGap=std::clamp(43.f+std::max(0.f,width-30.f)*.72f,35.f,105.f);
+   float launch=start-playerWidth*.5f-launchGap;
+   if(!route.empty()&&launch<route.back().obstacleEnd+22.f)continue;
+   route.push_back({launch,end});
+  }
+  return route;
  }
  bool shouldJump(Rect p,bool ground,bool inverted,bool solids,float bias=0.f){
   if(!ground)return false;
