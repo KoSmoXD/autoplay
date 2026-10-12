@@ -59,7 +59,7 @@ public:
    auto const& b=it->bounds;
    float rise=b.top-player.bottom;
    float gap=b.left-player.right;
-   if(rise<12.f||rise>78.f||gap<3.f||gap>160.f)continue;
+   if(rise < -5.f || rise > 78.f || gap < 12.f || gap > 160.f)continue;
    // Approximate normalized flight arc: maximum rise 92 units,
    // horizontal range 185 world units.
    float travel=gap+12.f;
@@ -67,8 +67,8 @@ public:
    float height=4.f*92.f*t*(1.f-t);
    if(height<rise+6.f)continue;
    // Take off in a window that allows the player to land on this top.
-   float takeoff=std::clamp(65.f+rise*.55f,48.f,110.f);
-   if(gap<=takeoff&&gap>=takeoff-17.f){
+   float takeoff=rise<12.f ? 48.f : std::clamp(65.f+rise*.55f,48.f,110.f);
+   if(gap<=takeoff&&gap>=takeoff-20.f){
     landingX=b.left+8.f;
     return true;
    }
