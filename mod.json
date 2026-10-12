@@ -5,7 +5,7 @@
   },
   "id": "ollfx.autojump",
   "name": "AutoJump AI (Android)",
-  "version": "v0.2.1",
+  "version": "v0.3.0",
   "developer": "oll.fx",
   "description": "Experimental auto-play with multi-spike grouping, approximate trajectory and retry timing.",
   "settings": {
