@@ -97,12 +97,13 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
   m_fields->wasDead=p->m_isDead;
   if(p->m_isDead)m_fields->pending=false;
   if(m_fields->pending&&!p->m_isOnGround)m_fields->airborne=true;
-  if(m_fields->pending&&!p->m_isDead&&m_fields->airborne&&
-     p->m_isOnGround&&p->getPositionX()>m_fields->pendingEnd+
-       (m_fields->elevatedPending?0.f:12.f)&&
-     (!m_fields->elevatedPending||p->getPositionY()>m_fields->pendingHeight-15.f)){
-   saveJump(m_fields->pendingX);
+  if(m_fields->pending&&!p->m_isDead&&m_fields->airborne&&p->m_isOnGround){
+   if(p->getPositionX()>m_fields->pendingEnd-(m_fields->elevatedPending?12.f:8.f)&&
+      (!m_fields->elevatedPending||p->getPositionY()>m_fields->pendingHeight-15.f))
+    saveJump(m_fields->pendingX);
+   // A landing finishes the old jump even when its target was not cleared.
    m_fields->pending=false;
+   m_fields->airborne=false;
   }
   auto*mod=Mod::get();
   if(!mod->getSettingValue<bool>("enabled")||m_isPaused||m_hasCompletedLevel||
@@ -138,13 +139,13 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
     }
     float landingX=0.f;
     bool elevated=false;
-    if(!nearbySaved&&!m_fields->pending&&!upside&&m==Mode::Cube){
+    if(!nearbySaved&&!upside&&m==Mode::Cube){
      elevated=mod->getSettingValue<bool>("platform-jumps")&&m_fields->planner.higherPlatform(position,p->m_isOnGround,landingX);
      if(elevated)trigger=true;
     }
-    if(!nearbySaved&&!m_fields->pending&&!elevated)
+    if(!nearbySaved&&!elevated)
      trigger=m_fields->planner.shouldJump(position,p->m_isOnGround,upside,base,solids,bias);
-    if(trigger&&!m_fields->pending){
+    if(trigger&&p->m_isOnGround){
      auto target=m_fields->planner.sense(position,upside,solids,320.f);
      if(target.obstacle||elevated){
       m_fields->elevatedPending=elevated;
