@@ -1,0 +1,20 @@
+name: Android Geode build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  android64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Geode Android64
+        id: build
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: latest
+          target: Android64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autojump-android64
+          path: ${{ steps.build.outputs.build-output }}

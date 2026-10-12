@@ -1,0 +1,33 @@
+{
+  "geode": "v5.10.1",
+  "gd": {
+    "android": "2.2081"
+  },
+  "id": "ollfx.autojump",
+  "name": "AutoJump (Android)",
+  "version": "v0.1.0",
+  "developer": "oll.fx",
+  "description": "Experimental automatic cube jumps using upcoming hazard geometry.",
+  "settings": {
+    "enabled": {
+      "name": "Enable AutoJump",
+      "description": "Automatically press jump when a cube approaches a static obstacle.",
+      "type": "bool",
+      "default": false
+    },
+    "lookahead": {
+      "name": "Jump distance",
+      "description": "How far ahead (GD world units) to press jump. Tune per speed/level.",
+      "type": "float",
+      "default": 47,
+      "min": 8,
+      "max": 130
+    },
+    "jump-solids": {
+      "name": "Jump over short solid blocks",
+      "description": "Experimental. Disable if the bot jumps unnecessarily on floors.",
+      "type": "bool",
+      "default": true
+    }
+  }
+}
