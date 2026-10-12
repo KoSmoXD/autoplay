@@ -5,9 +5,9 @@
   },
   "id": "ollfx.autojump",
   "name": "AutoJump AI (Android)",
-  "version": "v0.3.0",
+  "version": "v0.3.1",
   "developer": "oll.fx",
-  "description": "Experimental auto-play with multi-spike grouping, approximate trajectory and retry timing.",
+  "description": "Experimental autoplay with elevated-platform trajectory takeoff, saved jump positions and hazard groups.",
   "settings": {
     "enabled": {
       "name": "Enable AutoJump AI",
@@ -33,6 +33,11 @@
     },
     "trajectory": {
       "name": "Show approximate trajectory",
+      "type": "bool",
+      "default": true
+    },
+    "platform-jumps": {
+      "name": "Jump onto higher blocks",
       "type": "bool",
       "default": true
     }

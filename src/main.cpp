@@ -29,7 +29,8 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
   cocos2d::CCDrawNode* trajectory=nullptr;
   std::vector<float> savedJumps;
   std::string loadedKey;
-  bool pending=false, airborne=false;
+  bool pending=false, airborne=false, elevatedPending=false;
+  float pendingHeight=0.f;
   float pendingX=0.f, pendingEnd=0.f;
  };
  std::string levelKey(){
@@ -97,7 +98,9 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
   if(p->m_isDead)m_fields->pending=false;
   if(m_fields->pending&&!p->m_isOnGround)m_fields->airborne=true;
   if(m_fields->pending&&!p->m_isDead&&m_fields->airborne&&
-     p->m_isOnGround&&p->getPositionX()>m_fields->pendingEnd+12.f){
+     p->m_isOnGround&&p->getPositionX()>m_fields->pendingEnd+
+       (m_fields->elevatedPending?0.f:12.f)&&
+     (!m_fields->elevatedPending||p->getPositionY()>m_fields->pendingHeight-15.f)){
    saveJump(m_fields->pendingX);
    m_fields->pending=false;
   }
@@ -133,15 +136,23 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
       break;
      }
     }
-    if(!nearbySaved&&!m_fields->pending)
+    float landingX=0.f;
+    bool elevated=false;
+    if(!nearbySaved&&!m_fields->pending&&!upside&&m==Mode::Cube){
+     elevated=mod->getSettingValue<bool>("platform-jumps")&&m_fields->planner.higherPlatform(position,p->m_isOnGround,landingX);
+     if(elevated)trigger=true;
+    }
+    if(!nearbySaved&&!m_fields->pending&&!elevated)
      trigger=m_fields->planner.shouldJump(position,p->m_isOnGround,upside,base,solids,bias);
     if(trigger&&!m_fields->pending){
      auto target=m_fields->planner.sense(position,upside,solids,320.f);
-     if(target.obstacle){
+     if(target.obstacle||elevated){
+      m_fields->elevatedPending=elevated;
+      m_fields->pendingHeight=elevated?position.bottom+12.f:0.f;
       m_fields->pending=true;
       m_fields->airborne=false;
       m_fields->pendingX=p->getPositionX();
-      m_fields->pendingEnd=target.clusterEnd;
+      m_fields->pendingEnd=elevated?landingX:target.clusterEnd;
      }
     }
    }
@@ -156,7 +167,7 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
  void resetLevel(){
   button(false);m_fields->planner.newAttempt();m_fields->framesHeld=0;
   m_fields->cooldown=0;m_fields->wasDead=false;
-  m_fields->pending=false;m_fields->airborne=false;PlayLayer::resetLevel();
+  m_fields->pending=false;m_fields->airborne=false;m_fields->elevatedPending=false;PlayLayer::resetLevel();
  }
  void onExit(){
   button(false);m_fields->planner.clear();m_fields->learner.clear();

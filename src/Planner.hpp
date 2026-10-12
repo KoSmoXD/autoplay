@@ -46,6 +46,35 @@ public:
   }
   s.cluster=s.obstacle&&s.clusterEnd-(p.right+s.gap)>44.f;return s;
  }
+
+ // Predict whether a ground jump can reach the upper surface of a nearby
+ // static block. The parabola is a conservative approximation for normal cube.
+ bool higherPlatform(Rect player, bool grounded, float& landingX) {
+  if(!grounded)return false;
+  sort();
+  auto it=std::lower_bound(objects.begin(),objects.end(),player.right-4.f,
+   [](Obstacle const& o,float x){return o.bounds.left<x;});
+  for(;it!=objects.end()&&it->bounds.left<player.right+160.f;++it){
+   if(it->hazard)continue;
+   auto const& b=it->bounds;
+   float rise=b.top-player.bottom;
+   float gap=b.left-player.right;
+   if(rise<12.f||rise>78.f||gap<3.f||gap>160.f)continue;
+   // Approximate normalized flight arc: maximum rise 92 units,
+   // horizontal range 185 world units.
+   float travel=gap+12.f;
+   float t=travel/185.f;
+   float height=4.f*92.f*t*(1.f-t);
+   if(height<rise+6.f)continue;
+   // Take off in a window that allows the player to land on this top.
+   float takeoff=std::clamp(65.f+rise*.55f,48.f,110.f);
+   if(gap<=takeoff&&gap>=takeoff-17.f){
+    landingX=b.left+8.f;
+    return true;
+   }
+  }
+  return false;
+ }
  bool shouldJump(Rect p,bool ground,bool inverted,float base,bool solids,float bias=0.f){
   if(!ground)return false;
   auto s=sense(p,inverted,solids,320.f);if(!s.obstacle)return false;
