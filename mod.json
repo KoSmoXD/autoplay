@@ -5,9 +5,9 @@
   },
   "id": "ollfx.autojump",
   "name": "AutoJump AI (Android)",
-  "version": "v0.2.0",
+  "version": "v0.2.1",
   "developer": "oll.fx",
-  "description": "Experimental trajectory preview, multi-mode control and retry timing adaptation; not guaranteed level completion.",
+  "description": "Experimental auto-play with multi-spike grouping, approximate trajectory and retry timing.",
   "settings": {
     "enabled": {
       "name": "Enable AutoJump AI",

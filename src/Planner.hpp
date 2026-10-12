@@ -31,13 +31,13 @@ public:
     if(b.top<=p.bottom+4.f)s.dangerBelow=std::min(s.dangerBelow,p.bottom-b.top);
    }
   }
-  s.cluster=s.obstacle&&s.clusterEnd-(p.right+s.gap)>44.f;return s;
+  // Second pass: group successive ground hazards even when spacing is imperfect.\n  // A three-spike row is typically ~90 world units long.\n  if(s.obstacle){\n   float end=s.clusterEnd;\n   for(auto const& o:objects){\n    auto const& b=o.bounds;\n    if(b.left>end+42.f)break;\n    if(b.right<=end||b.left<p.right+s.gap)continue;\n    bool sameLane=!inverted?(b.top>=p.bottom-3.f&&b.bottom<=p.bottom+34.f):(b.bottom<=p.top+3.f&&b.top>=p.top-34.f);\n    if(sameLane&&(o.hazard||solid))end=std::max(end,b.right);\n   }\n   s.clusterEnd=end;\n  }\n  s.cluster=s.obstacle&&s.clusterEnd-(p.right+s.gap)>44.f;return s;
  }
  bool shouldJump(Rect p,bool ground,bool inverted,float base,bool solids,float bias=0.f){
   if(!ground)return false;
-  auto s=sense(p,inverted,solids,260.f);if(!s.obstacle)return false;
-  float extra=s.cluster?std::min(75.f,(s.clusterEnd-(p.right+s.gap)-30.f)*.65f):0.f;
-  float distance=std::clamp(base+bias+extra,8.f,160.f);
+  auto s=sense(p,inverted,solids,320.f);if(!s.obstacle)return false;
+  float width=s.clusterEnd-(p.right+s.gap);\n  // Longer spike clusters need launch earlier to cover the whole row.\n  float extra=s.cluster?std::clamp((width-30.f)*1.05f+18.f,0.f,115.f):0.f;
+  float distance=std::clamp(base+bias+extra,8.f,220.f);
   if(s.gap>distance||s.gap< -3.f)return false;
   float key=p.right+s.gap;if(std::fabs(key-lastX)<2.f)return false;
   lastX=key;return true;
