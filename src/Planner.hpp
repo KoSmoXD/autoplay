@@ -75,13 +75,14 @@ public:
   }
   return false;
  }
- bool shouldJump(Rect p,bool ground,bool inverted,float base,bool solids,float bias=0.f){
+ bool shouldJump(Rect p,bool ground,bool inverted,bool solids,float bias=0.f){
   if(!ground)return false;
   auto s=sense(p,inverted,solids,320.f);if(!s.obstacle)return false;
   float width=s.clusterEnd-(p.right+s.gap);
   // Longer spike clusters need launch earlier to cover the whole row.
   float extra=s.cluster?std::clamp((width-30.f)*1.05f+18.f,0.f,115.f):0.f;
-  float distance=std::clamp(base+bias+extra,8.f,220.f);
+  // Select the launch point from the obstacle width and approach, not a user slider.
+  float distance=std::clamp(43.f+bias+extra,20.f,220.f);
   if(s.gap>distance||s.gap< -3.f)return false;
   float key=p.right+s.gap;if(std::fabs(key-lastX)<2.f)return false;
   lastX=key;return true;

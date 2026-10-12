@@ -111,7 +111,6 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
    button(false);if(m_fields->trajectory)m_fields->trajectory->clear();return;
   }
   Mode m=mode(p);auto position=rect(p->getObjectRect());bool upside=p->m_isUpsideDown;
-  float base=static_cast<float>(mod->getSettingValue<double>("lookahead"));
   bool solids=mod->getSettingValue<bool>("jump-solids");
   auto sense=m_fields->planner.sense(position,upside,solids);
   bool learning=mod->getSettingValue<bool>("learning");
@@ -144,7 +143,7 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
      if(elevated)trigger=true;
     }
     if(!nearbySaved&&!elevated)
-     trigger=m_fields->planner.shouldJump(position,p->m_isOnGround,upside,base,solids,bias);
+     trigger=m_fields->planner.shouldJump(position,p->m_isOnGround,upside,solids,bias);
     if(trigger&&p->m_isOnGround){
      auto target=m_fields->planner.sense(position,upside,solids,320.f);
      if(target.obstacle||elevated){
@@ -157,7 +156,7 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
      }
     }
    }
-   else if(m_fields->cooldown==0&&sense.obstacle&&sense.gap<=base+bias+15.f&&sense.gap>=-3.f){
+   else if(m_fields->cooldown==0&&sense.obstacle&&sense.gap<=std::clamp(43.f+bias+(sense.cluster?30.f:0.f),25.f,140.f)&&sense.gap>=-3.f){
     trigger=true;m_fields->cooldown=m==Mode::UFO?10:14;
    }
    button(trigger);
