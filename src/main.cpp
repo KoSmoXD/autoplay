@@ -32,6 +32,9 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
   bool pending=false, airborne=false, elevatedPending=false;
   float pendingHeight=0.f;
   float pendingX=0.f, pendingEnd=0.f;
+  std::vector<autojump::PlannedJump> plannedRoute;
+  bool planned=false;
+  float previousPlayerX=-100000.f;
  };
  std::string levelKey(){
   if(!m_level)return "";
@@ -111,6 +114,10 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
    button(false);if(m_fields->trajectory)m_fields->trajectory->clear();return;
   }
   Mode m=mode(p);auto position=rect(p->getObjectRect());bool upside=p->m_isUpsideDown;
+  if(!m_fields->planned){
+   m_fields->plannedRoute=m_fields->planner.planStaticRoute();
+   m_fields->planned=true;
+  }
   bool solids=mod->getSettingValue<bool>("jump-solids");
   auto sense=m_fields->planner.sense(position,upside,solids);
   bool learning=mod->getSettingValue<bool>("learning");
@@ -126,23 +133,30 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
   }else{
    bool trigger=false;
    if(m==Mode::Cube||m==Mode::Robot){
-    bool nearbySaved=false;
-    for(float x:m_fields->savedJumps){
-     if(std::fabs(x-p->getPositionX())<35.f){
-      nearbySaved=true;
-      if(p->m_isOnGround&&!m_fields->pending&&
-       p->getPositionX()>=x-6.f&&p->getPositionX()<=x+8.f)
-       trigger=true;
-      break;
+    bool replaying=false;
+    if(p->m_isOnGround){
+     for(float x:m_fields->savedJumps){
+      // Replay only near its exact takeoff window. Else allow fresh planning.
+      if(p->getPositionX()>=x-7.f && p->getPositionX()<=x+7.f){
+       trigger=true;replaying=true;break;
+      }
+     }
+    }
+    if(!replaying && p->m_isOnGround){
+     for(const auto& action:m_fields->plannedRoute){
+      if(p->getPositionX()>=action.takeoffX-7.f &&
+         p->getPositionX()<=action.takeoffX+7.f){
+       trigger=true;break;
+      }
      }
     }
     float landingX=0.f;
     bool elevated=false;
-    if(!nearbySaved&&!upside&&m==Mode::Cube){
+    if(!trigger&&!upside&&m==Mode::Cube){
      elevated=mod->getSettingValue<bool>("platform-jumps")&&m_fields->planner.higherPlatform(position,p->m_isOnGround,landingX);
      if(elevated)trigger=true;
     }
-    if(!nearbySaved&&!elevated)
+    if(!trigger&&!elevated)
      trigger=m_fields->planner.shouldJump(position,p->m_isOnGround,upside,solids,bias);
     if(trigger&&p->m_isOnGround){
      auto target=m_fields->planner.sense(position,upside,solids,320.f);
@@ -167,11 +181,13 @@ class $modify(AutoJumpPlayLayer,PlayLayer) {
  void resetLevel(){
   button(false);m_fields->planner.newAttempt();m_fields->framesHeld=0;
   m_fields->cooldown=0;m_fields->wasDead=false;
-  m_fields->pending=false;m_fields->airborne=false;m_fields->elevatedPending=false;PlayLayer::resetLevel();
+  m_fields->pending=false;m_fields->airborne=false;m_fields->elevatedPending=false;
+  m_fields->planned=false;m_fields->plannedRoute.clear();PlayLayer::resetLevel();
  }
  void onExit(){
   button(false);m_fields->planner.clear();m_fields->learner.clear();
   m_fields->savedJumps.clear();m_fields->loadedKey.clear();
+  m_fields->plannedRoute.clear();m_fields->planned=false;
   PlayLayer::onExit();
  }
 };
