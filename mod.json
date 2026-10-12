@@ -5,9 +5,9 @@
   },
   "id": "ollfx.autojump",
   "name": "AutoJump AI (Android)",
-  "version": "v0.3.4",
+  "version": "v0.4.0",
   "developer": "oll.fx",
-  "description": "Automatic obstacle-based jump timing without manual base jump distance.",
+  "description": "Preplanned static cube jump route, saved successful jumps and reactive obstacle fallback.",
   "settings": {
     "enabled": {
       "name": "Enable AutoJump AI",
