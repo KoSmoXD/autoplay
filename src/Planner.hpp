@@ -1,110 +1,57 @@
 #pragma once
-
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <limits>
 #include <vector>
-
 namespace autojump {
-
-struct Rect {
-    float left = 0.f;
-    float bottom = 0.f;
-    float right = 0.f;
-    float top = 0.f;
+struct Rect { float left=0,bottom=0,right=0,top=0; };
+struct Obstacle { Rect bounds; bool hazard=true; };
+struct Sense {
+ float gap=10000.f,clusterEnd=0.f,dangerAbove=10000.f,dangerBelow=10000.f;
+ bool obstacle=false,cluster=false;
 };
-
-struct Obstacle {
-    Rect bounds;
-    bool hazard = true;
-};
-
-// This is a heuristic for static objects, not a physics simulator.
-// All geometry is expressed in Geometry Dash world coordinates.
 class Planner {
 public:
-    void clear() {
-        m_obstacles.clear();
-        m_sorted = true;
-        m_lastTriggeredX = -std::numeric_limits<float>::infinity();
-    }
-
-    void add(Obstacle obstacle) {
-        if (obstacle.bounds.right < obstacle.bounds.left ||
-            obstacle.bounds.top < obstacle.bounds.bottom) return;
-        m_obstacles.push_back(obstacle);
-        m_sorted = false;
-    }
-
-    std::size_t obstacleCount() const { return m_obstacles.size(); }
-
-    void newAttempt() {
-        m_lastTriggeredX = -std::numeric_limits<float>::infinity();
-    }
-
-    bool shouldJump(
-        Rect player, bool grounded, bool upsideDown, float lookahead,
-        bool jumpOverSolids
-    ) {
-        if (!grounded || m_obstacles.empty()) return false;
-        lookahead = std::clamp(lookahead, 8.f, 130.f);
-        sortIfNeeded();
-        // Query only the narrow strip ahead; no full level scan per frame.
-        auto it = std::lower_bound(
-            m_obstacles.begin(), m_obstacles.end(), player.left - 55.f,
-            [](Obstacle const& o, float x) { return o.bounds.left < x; }
-        );
-        for (; it != m_obstacles.end(); ++it) {
-            const Rect& b = it->bounds;
-            if (b.left > player.right + lookahead) break;
-            if (!it->hazard && !jumpOverSolids) continue;
-            // Ignore long floor/ceiling platforms; focus on 1-block obstacles.
-            if (!it->hazard && (b.right - b.left > 46.f || b.top - b.bottom > 46.f))
-                continue;
-            // A nearby hazard must actually intersect the ground-level path.
-            // For upside-down cube levels, test against the player's ceiling edge.
-            if (!upsideDown) {
-                if (it->hazard) {
-                    if (b.top < player.bottom - 4.f || b.bottom > player.bottom + 32.f)
-                        continue;
-                } else {
-                    // Solids completely beneath the feet are floor, not an obstacle.
-                    if (b.top <= player.bottom + 2.f || b.bottom > player.bottom + 32.f)
-                        continue;
-                }
-            } else {
-                if (it->hazard) {
-                    if (b.bottom > player.top + 4.f || b.top < player.top - 32.f)
-                        continue;
-                } else {
-                    if (b.bottom >= player.top - 2.f || b.top < player.top - 32.f)
-                        continue;
-                }
-            }
-            float gap = b.left - player.right;
-            if (gap < -3.f || gap > lookahead) continue;
-            // Never jump twice for the same obstacle in a single attempt.
-            if (std::abs(b.left - m_lastTriggeredX) <= 2.f) continue;
-            m_lastTriggeredX = b.left;
-            return true;
-        }
-        return false;
-    }
-
+ void clear(){objects.clear();sorted=true;lastX=-100000.f;}
+ void add(Obstacle o){if(o.bounds.right<=o.bounds.left||o.bounds.top<=o.bounds.bottom)return;objects.push_back(o);sorted=false;}
+ void newAttempt(){lastX=-100000.f;}
+ Sense sense(Rect p,bool inverted,bool solid,float ahead=270.f){
+  sort();Sense s;
+  auto it=std::lower_bound(objects.begin(),objects.end(),p.left-65.f,[](Obstacle const&o,float x){return o.bounds.left<x;});
+  for(;it!=objects.end()&&it->bounds.left<p.right+ahead;++it){
+   auto const& b=it->bounds;
+   if(!it->hazard&&!solid)continue;
+   if(!it->hazard&&(b.right-b.left>48.f||b.top-b.bottom>48.f))continue;
+   float gap=b.left-p.right;if(gap< -20.f)continue;
+   bool path=!inverted?(b.top>=p.bottom-3.f&&b.bottom<=p.bottom+34.f):(b.bottom<=p.top+3.f&&b.top>=p.top-34.f);
+   if(path&&gap<s.gap){s.gap=gap;s.clusterEnd=b.right;s.obstacle=true;}
+   if(s.obstacle&&path&&gap<=s.gap+105.f&&b.left<=s.clusterEnd+36.f)s.clusterEnd=std::max(s.clusterEnd,b.right);
+   if(it->hazard&&b.right>p.left-12.f&&b.left<p.right+95.f){
+    if(b.bottom>=p.top-4.f)s.dangerAbove=std::min(s.dangerAbove,b.bottom-p.top);
+    if(b.top<=p.bottom+4.f)s.dangerBelow=std::min(s.dangerBelow,p.bottom-b.top);
+   }
+  }
+  s.cluster=s.obstacle&&s.clusterEnd-(p.right+s.gap)>44.f;return s;
+ }
+ bool shouldJump(Rect p,bool ground,bool inverted,float base,bool solids,float bias=0.f){
+  if(!ground)return false;
+  auto s=sense(p,inverted,solids,260.f);if(!s.obstacle)return false;
+  float extra=s.cluster?std::min(75.f,(s.clusterEnd-(p.right+s.gap)-30.f)*.65f):0.f;
+  float distance=std::clamp(base+bias+extra,8.f,160.f);
+  if(s.gap>distance||s.gap< -3.f)return false;
+  float key=p.right+s.gap;if(std::fabs(key-lastX)<2.f)return false;
+  lastX=key;return true;
+ }
 private:
-    void sortIfNeeded() {
-        if (m_sorted) return;
-        std::stable_sort(m_obstacles.begin(), m_obstacles.end(),
-            [](Obstacle const& a, Obstacle const& b) {
-                return a.bounds.left < b.bounds.left;
-            });
-        m_sorted = true;
-    }
-
-    std::vector<Obstacle> m_obstacles;
-    bool m_sorted = true;
-    float m_lastTriggeredX = -std::numeric_limits<float>::infinity();
+ void sort(){if(sorted)return;std::stable_sort(objects.begin(),objects.end(),[](Obstacle const&a,Obstacle const&b){return a.bounds.left<b.bounds.left;});sorted=true;}
+ std::vector<Obstacle> objects;bool sorted=true;float lastX=-100000.f;
 };
-
-} // namespace autojump
+class RetryLearner {
+public:
+ void clear(){bias=0;lastDeath=-100000;deaths=0;}
+ void onDeath(float x){if(std::isfinite(x)){bias=std::clamp(bias+(std::fabs(x-lastDeath)<130.f?12.f:3.f),-20.f,65.f);lastDeath=x;++deaths;}}
+ float getBias()const{return bias;}
+ unsigned getDeaths()const{return deaths;}
+private:float bias=0,lastDeath=-100000;unsigned deaths=0;
+};
+}
